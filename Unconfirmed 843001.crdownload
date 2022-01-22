@@ -1,0 +1,247 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[27]:
+
+
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+get_ipython().run_line_magic('matplotlib', 'inline')
+
+
+# In[28]:
+
+
+data=pd.read_excel('D:\machine learning\Raw data\Credit_card_default'')
+
+
+# In[29]:
+
+
+data.head()
+
+
+# In[30]:
+
+
+data.shape
+
+
+# In[31]:
+
+
+data.isna().sum()
+
+
+# In[32]:
+
+
+data.info()
+
+
+# In[33]:
+
+
+sns.pairplot(data)
+
+
+# From the pair-plot above, we can see that there is some relationship between the feature columns.
+# To confirm that we’d plot a correlation heatmap.
+# 
+
+# In[34]:
+
+
+plt.figure(figsize=(13,8))
+sns.heatmap(data.corr(), annot=True )
+
+
+# From the correlation heatmap above, it can be seen that there are some relationships between the feature columns, they are not entirely independent. 
+# 
+# But in this scenario, there is a correlation because a customer who was not able to pay the bill for 1 month was again not able to pay it for the subsequent months and hence the correlation.
+# 
+# Again for the bill amount column, the same has happened. If the customer was not able to pay the bill, then the bill amount almost remained the same, or if the customer was able to pay then the bill amount got reduced.
+# 
+# We remove columns when they convey the same information. But here, dropping the columns shall result in the loss of bill and payment history data. So, we don’t need to drop any column although there is a correlation. 
+# 
+
+# In[19]:
+
+
+x=data.drop(labels=['default payment next month'],axis=1)
+y=data['default payment next month']
+
+
+# In[23]:
+
+
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.33, random_state=42)
+
+
+# In[36]:
+
+
+from sklearn.preprocessing import StandardScaler
+train_scaler=StandardScaler()
+test_scaler=StandardScaler()
+
+
+# In[37]:
+
+
+scaled_train_data=train_scaler.fit_transform(x_train)
+scaled_test_data=test_scaler.fit_transform(x_test)
+
+
+# In[38]:
+
+
+scaled_train_df=pd.DataFrame(data=scaled_train_data, columns=x_train.columns, index=x_train.index)
+
+
+# In[39]:
+
+
+scaled_test_df=pd.DataFrame(data=scaled_test_data, columns=x_test.columns, index=x_test.index)
+
+
+# In[40]:
+
+
+scaled_train_df.head()
+
+
+# In[35]:
+
+
+from sklearn.naive_bayes import GaussianNB
+gnb=GaussianNB()
+
+
+# In[41]:
+
+
+pred_y=gnb.fit(scaled_train_df,y_train).predict(scaled_test_df)
+
+
+# In[42]:
+
+
+from sklearn.metrics import accuracy_score
+
+
+# In[43]:
+
+
+ac=accuracy_score(y_test, pred_y)
+ac
+
+
+# In[45]:
+
+
+from sklearn.model_selection import GridSearchCV
+
+
+# In[46]:
+
+
+param_grid = {"var_smoothing": [1e-9,0.1, 0.001, 0.5,0.05,0.01,1e-8,1e-7,1e-6,1e-10,1e-11]}
+#Creating an object of the Grid Search class
+grid = GridSearchCV(estimator=gnb, param_grid=param_grid, cv=5,  verbose=3)
+
+
+# In[47]:
+
+
+
+#finding the best parameters
+grid.fit(scaled_train_data, y_train)
+
+
+# In[48]:
+
+
+grid.best_estimator_
+
+
+# In[49]:
+
+
+gnb_new=GaussianNB(var_smoothing=0.5)
+pred_y_new=gnb_new.fit(scaled_train_df,y_train).predict(scaled_test_df)
+
+
+# In[51]:
+
+
+ac_new=accuracy_score(y_test,pred_y_new)
+ac_new
+
+
+# In[68]:
+
+
+param_grid_xgboost = {
+
+                "n_estimators": [50,100, 130],
+                               "max_depth": range(3, 11, 1),
+    "random_state":[0,50,100]
+    
+
+            }
+
+# Creating an object of the Grid Search class
+grid= GridSearchCV(XGBClassifier(objective='binary:logistic'),param_grid_xgboost, verbose=3,cv=5,n_jobs=-1)
+
+
+# In[69]:
+
+
+grid.fit(scaled_train_df,y_train)
+
+
+# In[70]:
+
+
+grid.best_estimator_
+
+
+# In[64]:
+
+
+xgb_new=XGBClassifier(base_score=0.5, booster='gbtree', colsample_bylevel=1,
+              colsample_bynode=1, colsample_bytree=1, gamma=0,
+              learning_rate=0.1, max_delta_step=0, max_depth=3,
+              min_child_weight=1, missing=None, n_estimators=50, n_jobs=-1,
+              nthread=None, objective='binary:logistic', random_state=0,
+              reg_alpha=0, reg_lambda=1, scale_pos_weight=1, seed=None,
+              silent=None, subsample=1, verbosity=1)
+
+
+# In[71]:
+
+
+pred_y_xgb_new=xgb_new.fit(scaled_train_df,y_train).predict(scaled_test_df)
+
+
+# In[72]:
+
+
+ac_xgb_new=accuracy_score(y_test,pred_y_xgb_new)
+
+
+# In[73]:
+
+
+ac_xgb_new
+
+
+# In[ ]:
+
+
+
+
